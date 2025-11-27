@@ -597,7 +597,7 @@
                 window.scrollTo(0, 0);
             });
             
-            // --- Form Submission Logic (Smart Hybrid Mode) ---
+            // --- Form Submission Logic (Always use client-side send) ---
             form.addEventListener('submit', async function(event) {
                 event.preventDefault();
                 submitButton.disabled = true;
@@ -606,6 +606,8 @@
                 // --- 1. Gather Data ---
                 const selectedOption = participantDropdown.options[participantDropdown.selectedIndex];
                 const participantName = selectedOption ? selectedOption.textContent : 'ไม่ระบุ';
+                const selectedIndex = participantDropdown.value; // ดึง index เพื่อเข้าถึงข้อมูลใน sheetData
+                const currentRow = sheetData[selectedIndex];     // ดึงข้อมูลแถวที่เลือกมาใช้งาน
                 const lesson = document.getElementById('problem-lesson').textContent;
                 
                 const questions = {
@@ -624,20 +626,20 @@
                     a5: document.getElementById('answer5').value.trim() || '-',
                 };
                 
-                // Prepare Message
+                // Prepare Message with Short Headers
                 const summaryMessage = `📝 สรุปผลการตอบแบบสอบถาม
 -------------------------
 ผู้ตอบ: ${participantName}
 User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5) + '...'}
 คำถามชุดที่: ${lesson}
 -------------------------
-1. ${questions.q1}
+1. จงระบุเจนารมณ์...
 ตอบ: ${answers.a1}
 
-2. ${questions.q2}
+2. ในฐานะ...
 ตอบ: ${answers.a2}
 
-3. ${questions.q3}
+3. จากสถานการณ์...
 ตอบ: ${answers.a3}
 
 4. ${questions.q4}
@@ -648,7 +650,7 @@ User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5)
 -------------------------
 ขอบคุณที่ร่วมตอบแบบสอบถาม`;
 
-                // --- 2. Send to GAS ---
+                // --- 2. Send to GAS (Data Only) ---
                 try {
                     const formData = new FormData();
                     formData.append('timestamp', new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }));
@@ -661,11 +663,9 @@ User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5)
                     formData.append('q4', questions.q4); formData.append('a4', answers.a4);
                     formData.append('q5', questions.q5); formData.append('a5', answers.a5);
                     
-                    // *** Smart Switch Logic ***
-                    // ถ้าอยู่ในแอป LINE (Mobile): ส่ง 'false' ไปที่ GAS (ไม่ให้ GAS ยิง Push) -> เราจะใช้ liff.sendMessages ยิงเองเพื่อให้เป็น User Message
-                    // ถ้าไม่อยู่ในแอป LINE (Desktop): ส่ง 'true' ไปที่ GAS (ให้ GAS ยิง Push) -> เพราะเราทำอะไรไม่ได้นอกจาก Push
-                    const isLineApp = liff.isInClient();
-                    formData.append('pushMessage', isLineApp ? 'false' : 'true');
+                    // *** Force Client-side Send ***
+                    // ปิดการส่ง Push จาก Server (GAS) เพื่อไม่ให้ข้อความซ้ำหรือเป็นแบบ Bot
+                    formData.append('pushMessage', 'false');
                     formData.append('messageContent', summaryMessage);
 
                     const response = await fetch(GAS_URL, {
@@ -679,41 +679,30 @@ User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5)
                          throw new Error('Script returned non-success result');
                     }
 
-                    // --- 3. Success Handling (Hybrid) ---
-                    
-                    if (isLineApp) {
-                        // Case A: Mobile LINE App -> ส่งข้อความแบบ User (ฝั่งขวา)
-                        try {
-                            await liff.sendMessages([{ type: 'text', text: summaryMessage }]);
+                    // --- 3. Try Sending Message via LIFF (Client-side) ---
+                    try {
+                        // พยายามส่งข้อความด้วย liff.sendMessages ในทุกกรณี
+                        await liff.sendMessages([{ type: 'text', text: summaryMessage }]);
+                        
+                        if (liff.isInClient()) {
                             liff.closeWindow();
-                        } catch (msgError) {
-                            console.error("LIFF Send Error:", msgError);
-                            // ถ้าส่งแบบ User ไม่ผ่าน (เช่น user บล็อกบอท หรือสิทธิ์ไม่พอ)
-                            // แจ้งเตือนแล้วปิดหน้าต่าง
-                            liff.closeWindow();
+                        } else {
+                            showModal('บันทึกสำเร็จ', 'ส่งข้อมูลและข้อความเรียบร้อยแล้ว', () => {
+                                location.reload();
+                            });
                         }
-                    } else {
-                        // Case B: Desktop Browser -> ตรวจสอบผล Push Message จาก Server (ฝั่งซ้าย)
-                        let modalTitleText = 'บันทึกสำเร็จ';
-                        let modalBodyText = 'ข้อมูลถูกบันทึกและส่งเข้า LINE ของคุณเรียบร้อยแล้ว';
-                        let isSuccess = true;
-
-                        // ตรวจสอบสถานะ lineApiStatus จาก GAS
-                        if (result.lineApiStatus && result.lineApiStatus !== 'Success' && result.lineApiStatus !== 'skipped') {
-                            modalTitleText = 'บันทึกข้อมูลแล้ว (แต่ส่ง LINE ไม่ผ่าน)';
-                            let errorMsg = result.lineApiStatus;
-                            let fixSuggestion = 'กรุณาตรวจสอบ Channel Access Token ใน Google Apps Script';
-
-                            if (errorMsg.includes("UrlFetchApp") || errorMsg.includes("script.external_request")) {
-                                fixSuggestion = '<strong>การแก้ไข:</strong> สคริปต์ยังไม่ได้รับอนุญาตให้ส่งข้อมูลออกภายนอก<br>1. ไปที่หน้าแก้ไข Google Apps Script<br>2. ลองกด Run ฟังก์ชัน pushLineMessage (หรือ doPost)<br>3. กดยอมรับสิทธิ์ (Review Permissions)<br>4. Deploy ใหม่ (New Deployment)';
-                            }
-
-                            modalBodyText = `บันทึกข้อมูลลง Sheet สำเร็จ แต่เกิดข้อผิดพลาดในการส่งข้อความ LINE:<br><br><code style="color:red; background:#fee; padding:2px 4px; border-radius:4px; display:block; margin-bottom:10px;">${errorMsg}</code><br>${fixSuggestion}`;
-                            isSuccess = false;
+                    } catch (msgError) {
+                        console.error("LIFF Send Error:", msgError);
+                        let errorMsg = 'บันทึกข้อมูลลง Sheet สำเร็จ<br>แต่ไม่สามารถส่งข้อความเข้าแชทได้';
+                        
+                        // เพิ่มคำอธิบายกรณีเป็น Browser
+                        if (!liff.isInClient()) {
+                            errorMsg += '<br><br><small style="color:red">สาเหตุ: liff.sendMessages ไม่รองรับการทำงานบน External Browser</small>';
                         }
-
-                        showModal(modalTitleText, modalBodyText, () => {
-                            location.reload();
+                        
+                        showModal('บันทึกสำเร็จ (มีข้อแจ้งเตือน)', errorMsg, () => {
+                            if (liff.isInClient()) liff.closeWindow();
+                            else location.reload();
                         });
                     }
                     
