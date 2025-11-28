@@ -364,7 +364,7 @@
                 <div id="page2" class="page">
                     <button type="button" id="backButton" class="btn btn-back">← กลับ</button>
                     <div class="problem-statement">
-                        <h3>คำชี้แจง</h3>
+                        <h3>โจทย์ปัญหา</h3>
                         <h4 id="problem-lesson" style="font-weight: 500; margin-bottom: 1rem; color: #374151;"></h4>
                         <p id="problem-description"></p>
                         <div class="image-gallery">
@@ -434,7 +434,7 @@
 
             // --- Configuration ---
             const LIFF_ID = '2008056238-g8p1R13n'; 
-            const GAS_URL = 'https://script.google.com/macros/s/AKfycbzmdsVjgV-h_KFOCGpnt1HeZ1FdJTyMGKq9f4K0FALVR1iCd2ai-holzFH-4FTIqv6I/exec';
+            const GAS_URL = 'https://script.google.com/macros/s/AKfycbyQb0e2Or6JlgROReyqLeCoh41s9fvTYq4UK-aK8znA0-18RaA4O2tSLGcS59AoKlYcjQ/exec';
             const SHEET_ID = '1Fn3Rn8pO43tYOQrKI_-oSmc-UxL6hog3JXZ2cYjsGYI';
             const SHEET_GID = '1799873089';
             const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${SHEET_GID}`;
@@ -625,12 +625,15 @@
                     a4: document.getElementById('answer4').value.trim() || '-',
                     a5: document.getElementById('answer5').value.trim() || '-',
                 };
+
+                const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
                 
                 // Prepare Message with Short Headers
                 const summaryMessage = `📝 สรุปผลการตอบแบบสอบถาม
 -------------------------
 ผู้ตอบ: ${participantName}
 User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5) + '...'}
+เวลา: ${timestamp}
 คำถามชุดที่: ${lesson}
 -------------------------
 1. จงระบุเจนารมณ์...
@@ -653,7 +656,7 @@ User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5)
                 // --- 2. Send to GAS (Data Only) ---
                 try {
                     const formData = new FormData();
-                    formData.append('timestamp', new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }));
+                    formData.append('timestamp', timestamp);
                     formData.append('lineUserId', lineUserId);
                     formData.append('participant', participantName);
                     formData.append('lesson', lesson);
