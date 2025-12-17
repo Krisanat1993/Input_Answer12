@@ -67,15 +67,18 @@
             color: #475569;
             font-size: 1rem;
         }
-        .form-group { margin-bottom: 24px; }
+        /* ปรับระยะห่างของแต่ละฟอร์มให้มากขึ้น */
+        .form-group { margin-bottom: 32px; }
+        
         .form-label {
             display: block;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: #374151;
-            font-size: 1.1rem;
+            font-weight: 600; /* เพิ่มความหนาของตัวอักษรหัวข้อ */
+            margin-bottom: 12px;
+            color: #1F2937; /* สีเข้มขึ้นให้อ่านง่าย */
+            font-size: 1.15rem;
             white-space: pre-wrap;
             word-break: break-word;
+            line-height: 1.8; /* ระยะห่างบรรทัดสำหรับคำถามยาวๆ */
         }
         .dropdown select {
             width: 100%;
@@ -214,22 +217,33 @@
             margin-top: 8px;
             text-align: left;
         }
+        
+        /* --- ปรับแต่ง Textarea ให้ใหญ่และยืดขยายได้ดีขึ้น --- */
         .textarea {
             width: 100%;
-            padding: 14px 16px;
+            padding: 16px;
             border: 2px solid #E5E7EB;
             border-radius: 8px;
             font-size: 1rem;
             font-family: 'Sarabun', sans-serif;
-            resize: vertical;
-            min-height: 100px;
-            transition: all 0.3s ease;
+            line-height: 1.6;
+            
+            /* สำคัญ: ให้ผู้ใช้ลากขยายแนวตั้งได้ */
+            resize: vertical; 
+            
+            /* กำหนดความสูงเริ่มต้นให้เยอะขึ้น */
+            min-height: 200px; 
+            
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background-color: #FAFAFA; /* สีพื้นหลังอ่อนๆ ให้ดูน่าเขียน */
         }
         .textarea:focus {
             outline: none;
             border-color: #3B82F6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            background-color: #FFFFFF;
         }
+        
          .spinner {
             border: 4px solid rgba(0,0,0,.1);
             width: 36px;
@@ -397,9 +411,21 @@
                     </div>
                     
                     <!-- Questions 1-3 -->
-                    <div class="form-group"><label id="question1-label" for="answer1" class="form-label"></label><textarea id="answer1" class="textarea" placeholder="กรอกคำตอบของคุณที่นี่..."></textarea></div>
-                    <div class="form-group"><label id="question2-label" for="answer2" class="form-label"></label><textarea id="answer2" class="textarea" placeholder="กรอกคำตอบของคุณที่นี่..."></textarea></div>
-                    <div class="form-group"><label id="question3-label" for="answer3" class="form-label"></label><textarea id="answer3" class="textarea" placeholder="กรอกคำตอบของคุณที่นี่..."></textarea></div>
+                    <!-- เพิ่ม rows="8" เพื่อให้กล่องใหญ่ขึ้นโดย default -->
+                    <div class="form-group">
+                        <label id="question1-label" for="answer1" class="form-label"></label>
+                        <textarea id="answer1" class="textarea" rows="8" placeholder="กรอกคำตอบของคุณที่นี่..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label id="question2-label" for="answer2" class="form-label"></label>
+                        <textarea id="answer2" class="textarea" rows="8" placeholder="กรอกคำตอบของคุณที่นี่..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label id="question3-label" for="answer3" class="form-label"></label>
+                        <textarea id="answer3" class="textarea" rows="8" placeholder="กรอกคำตอบของคุณที่นี่..."></textarea>
+                    </div>
 
                     <button type="submit" id="submitButton" class="btn btn-success">ส่งคำตอบ</button>
                 </div>
@@ -534,13 +560,6 @@
                     const rows = json.table.rows;
 
                     // Mapping Data based on User Request
-                    // A: Name, B: Title, C: Desc
-                    // D,E: Img1, Cap1
-                    // F,G: Img2, Cap2
-                    // H,I: Img3, Cap3
-                    // J,K: Img4, Cap4
-                    // L,M: Img5, Cap5
-                    // N,O,P: Q1, Q2, Q3
                     sheetData = rows.map(row => ({
                         A: row.c[0]?.v || '', // Participant Name
                         B: row.c[1]?.v || '', // Lesson Title
@@ -683,13 +702,13 @@ User ID: ${lineUserId.startsWith('GUEST') ? 'Guest' : lineUserId.substring(0, 5)
 เวลา: ${timestamp}
 หัวข้อ: ${lesson}
 -------------------------
-1. จงระบุเจนารมณ์...
+1. ${questions.q1}
 ตอบ: ${answers.a1}
 
-2. ในฐานะ...
+2. ${questions.q2}
 ตอบ: ${answers.a2}
 
-3. จากสถานการณ์...
+3. ${questions.q3}
 ตอบ: ${answers.a3}
 -------------------------
 ขอบคุณที่ร่วมตอบแบบสอบถาม`;
